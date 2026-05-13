@@ -1,0 +1,178 @@
+{
+  "name": "Web Research Agent Workflow",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "path": "research-agent",
+        "method": "POST",
+        "responseMode": "lastNode"
+      },
+      "position": [250, 300],
+      "name": "Webhook Trigger"
+    },
+    {
+      "id": "validate_input",
+      "type": "n8n-nodes-base.if",
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.goal }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "position": [450, 300],
+      "name": "Validate Input"
+    },
+    {
+      "id": "call_agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "http://agent:8000/agent/run",
+        "method": "POST",
+        "headers": {
+          "Authorization": "Bearer {{ $env.API_KEY }}"
+        },
+        "body": {
+          "goal": "={{ $json.body.goal }}",
+          "max_iterations": "={{ $json.body.max_iterations || 15 }}",
+          "headless": true,
+          "use_memory": true
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "position": [650, 250],
+      "name": "Start Agent Run"
+    },
+    {
+      "id": "wait_for_result",
+      "type": "n8n-nodes-base.wait",
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "position": [850, 250],
+      "name": "Wait for Processing"
+    },
+    {
+      "id": "check_status",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "http://agent:8000/agent/status/{{ $json.run_id }}",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer {{ $env.API_KEY }}"
+        }
+      },
+      "position": [1050, 250],
+      "name": "Check Agent Status"
+    },
+    {
+      "id": "is_complete",
+      "type": "n8n-nodes-base.if",
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "success"
+            }
+          ]
+        }
+      },
+      "position": [1250, 250],
+      "name": "Is Complete?"
+    },
+    {
+      "id": "format_result",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "research_result",
+              "value": "={{ $json.final_output }}"
+            },
+            {
+              "name": "status",
+              "value": "success"
+            },
+            {
+              "name": "duration",
+              "value": "={{ $json.duration_seconds }}"
+            }
+          ]
+        }
+      },
+      "position": [1450, 200],
+      "name": "Format Result"
+    },
+    {
+      "id": "error_response",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "error",
+              "value": "Goal is required in the request body"
+            },
+            {
+              "name": "status",
+              "value": "error"
+            }
+          ]
+        }
+      },
+      "position": [650, 400],
+      "name": "Error Response"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "Validate Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [{ "node": "Start Agent Run", "type": "main", "index": 0 }],
+        [{ "node": "Error Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Start Agent Run": {
+      "main": [
+        [{ "node": "Wait for Processing", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait for Processing": {
+      "main": [
+        [{ "node": "Check Agent Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Agent Status": {
+      "main": [
+        [{ "node": "Is Complete?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is Complete?": {
+      "main": [
+        [{ "node": "Format Result", "type": "main", "index": 0 }],
+        [{ "node": "Wait for Processing", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Web research workflow that invokes the Browser Automation Agent via webhook, polls for completion, and returns the structured result."
+  }
+}

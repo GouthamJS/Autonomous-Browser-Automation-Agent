@@ -1,0 +1,38 @@
+# ═══════════════════════════════════════════════
+# Autonomous Browser Automation Agent
+# Python Dependencies
+# ═══════════════════════════════════════════════
+
+# --- Core Agent Framework ---
+langchain>=0.2.0
+langgraph>=0.2.0
+langchain-community>=0.2.0
+langchain-groq>=0.1.0
+langchain-core>=0.2.0
+
+# --- Browser Automation ---
+playwright>=1.40.0
+
+# --- Memory & Embeddings ---
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+
+# --- API & Web Framework ---
+fastapi>=0.100.0
+uvicorn[standard]>=0.24.0
+
+# --- Utilities ---
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# --- Monitoring ---
+langsmith>=0.1.0
+
+# --- Data Processing ---
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# --- Testing ---
+pytest>=7.0.0
+pytest-asyncio>=0.21.0

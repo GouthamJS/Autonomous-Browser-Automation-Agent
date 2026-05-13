@@ -1,0 +1,51 @@
+# ═══════════════════════════════════════════════════════════════
+# Autonomous Browser Automation Agent — Docker Compose
+# ═══════════════════════════════════════════════════════════════
+# Services: Agent API + n8n Workflow Engine (optional)
+
+version: "3.9"
+
+services:
+  # ── Agent API Service ─────────────────────────────────────────
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: browser-agent
+    ports:
+      - "${API_PORT:-8000}:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs               # Persist logs and screenshots
+      - ./data:/app/data               # Persist ChromaDB data
+    shm_size: "1gb"                     # Required for Chromium
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── n8n Workflow Engine (Optional) ────────────────────────────
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: browser-agent-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=changeme
+      - WEBHOOK_URL=http://agent:8000
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+    depends_on:
+      agent:
+        condition: service_healthy
+
+volumes:
+  n8n_data:
+    driver: local
